@@ -1,10 +1,14 @@
 // config/db.js
-// Handles the connection to our MongoDB database using Mongoose.
+// Handles the connection to MongoDB using Mongoose.
+// On Vercel (or any production env), MONGO_URI must be set (e.g. MongoDB Atlas).
+// Locally, falls back to mongodb-memory-server for zero-config development.
 
 const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
 const User = require('../models/User');
 const Property = require('../models/Property');
+
+// Cache the connection promise so we don't reconnect on every serverless invocation
+let cached = { conn: null, promise: null };
 
 const seedDefaultUsers = async () => {
   const userCount = await User.countDocuments();
@@ -157,23 +161,45 @@ const seedDefaultProperties = async () => {
 };
 
 const connectDB = async () => {
-  try {
-    let mongoUri = process.env.MONGO_URI;
+  // Return cached connection if already connected
+  if (cached.conn) return cached.conn;
+  if (cached.promise) return cached.promise;
 
-    if (!mongoUri) {
-      const mongoMemoryServer = await MongoMemoryServer.create();
-      mongoUri = mongoMemoryServer.getUri();
-      console.log('ℹ️ No MONGO_URI found. Using in-memory MongoDB for local development.');
+  cached.promise = (async () => {
+    try {
+      let mongoUri = process.env.MONGO_URI;
+
+      if (!mongoUri) {
+        // On Vercel / production, mongodb-memory-server cannot work (read-only FS).
+        // Only use it for local development.
+        if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+          throw new Error(
+            'MONGO_URI environment variable is required in production. ' +
+            'Please set it to a MongoDB Atlas connection string in your Vercel project settings.'
+          );
+        }
+
+        // Local development fallback: in-memory MongoDB
+        const { MongoMemoryServer } = require('mongodb-memory-server');
+        const mongoMemoryServer = await MongoMemoryServer.create();
+        mongoUri = mongoMemoryServer.getUri();
+        console.log('ℹ️ No MONGO_URI found. Using in-memory MongoDB for local development.');
+      }
+
+      const conn = await mongoose.connect(mongoUri);
+      await seedDefaultUsers();
+      await seedDefaultProperties();
+      console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+      cached.conn = conn;
+      return conn;
+    } catch (error) {
+      cached.promise = null; // Allow retry on next request
+      console.error(`❌ Error connecting to MongoDB: ${error.message}`);
+      throw error;
     }
+  })();
 
-    const conn = await mongoose.connect(mongoUri);
-    await seedDefaultUsers();
-    await seedDefaultProperties();
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`❌ Error connecting to MongoDB: ${error.message}`);
-    process.exit(1);
-  }
+  return cached.promise;
 };
 
 module.exports = connectDB;
