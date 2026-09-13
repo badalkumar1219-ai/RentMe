@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
-import api from '../api/axios';
+import { PROPERTIES } from '../data/listings';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const OwnerDashboard = () => {
@@ -13,34 +13,23 @@ const OwnerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
 
-  const load = async () => {
+  const load = () => {
     setLoading(true);
-    try {
-      const { data } = await api.get('/properties/owner/mine');
-      setProperties(data.data);
-    } catch {
-      toast.error('Failed to load your listings');
-    } finally {
-      setLoading(false);
-    }
+    // Setting all properties from static data as requested
+    setProperties([...PROPERTIES]);
+    setLoading(false);
   };
 
   useEffect(() => {
     load();
   }, []);
 
-  const handleDelete = async (id) => {
+  const handleDelete = (id) => {
     if (!window.confirm('Are you sure you want to delete this property? This cannot be undone.')) return;
     setDeletingId(id);
-    try {
-      await api.delete(`/properties/${id}`);
-      setProperties((prev) => prev.filter((p) => p._id !== id));
-      toast.success('Property deleted');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete property');
-    } finally {
-      setDeletingId(null);
-    }
+    setProperties((prev) => prev.filter((p) => p._id !== id));
+    toast.success('Property deleted');
+    setDeletingId(null);
   };
 
   const statusBadge = (status) => {

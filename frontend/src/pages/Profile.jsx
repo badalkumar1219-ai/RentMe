@@ -3,25 +3,18 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { FiUser, FiMail, FiPhone } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
-import api from '../api/axios';
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
   const [form, setForm] = useState({ name: user?.name || '', phone_number: user?.phone_number || '' });
   const [saving, setSaving] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setSaving(true);
-    try {
-      const { data } = await api.put('/auth/me', form);
-      updateUser({ name: data.data.name, phone_number: data.data.phone_number });
-      toast.success('Profile updated');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Update failed');
-    } finally {
-      setSaving(false);
-    }
+    updateUser({ name: form.name, phone_number: form.phone_number });
+    toast.success('Profile updated');
+    setSaving(false);
   };
 
   return (

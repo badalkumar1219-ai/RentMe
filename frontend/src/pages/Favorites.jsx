@@ -1,7 +1,6 @@
-// pages/Favorites.jsx
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import api from '../api/axios';
+import { getPropertyById } from '../data/listings';
 import PropertyCard from '../components/PropertyCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -9,11 +8,13 @@ const Favorites = () => {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  const load = () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/favorites');
-      setProperties(data.data);
+      const stored = localStorage.getItem('favoriteIds');
+      const favoriteIds = stored ? JSON.parse(stored) : [];
+      const loadedProps = favoriteIds.map(id => getPropertyById(id)).filter(Boolean);
+      setProperties(loadedProps);
     } catch {
       toast.error('Failed to load saved properties');
     } finally {
@@ -21,13 +22,14 @@ const Favorites = () => {
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  const toggleFavorite = async (propertyId) => {
+  const toggleFavorite = (propertyId) => {
     try {
-      await api.delete(`/favorites/${propertyId}`);
+      const stored = localStorage.getItem('favoriteIds');
+      let favoriteIds = stored ? JSON.parse(stored) : [];
+      favoriteIds = favoriteIds.filter(id => id !== propertyId);
+      localStorage.setItem('favoriteIds', JSON.stringify(favoriteIds));
       setProperties((prev) => prev.filter((p) => p._id !== propertyId));
       toast.success('Removed from saved properties');
     } catch {
@@ -38,7 +40,6 @@ const Favorites = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <h1 className="section-title mb-6">Saved Properties</h1>
-
       {loading ? (
         <LoadingSpinner />
       ) : properties.length === 0 ? (

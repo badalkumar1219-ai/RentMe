@@ -1,10 +1,7 @@
-// pages/AdminDashboard.jsx
-// Admin console: manage users and moderate property listings.
-
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { FiTrash2, FiCheck, FiX, FiUserX, FiUserCheck } from 'react-icons/fi';
-import api from '../api/axios';
+import { PROPERTIES, DEMO_USERS } from '../data/listings';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const AdminDashboard = () => {
@@ -13,66 +10,35 @@ const AdminDashboard = () => {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  const load = () => {
     setLoading(true);
-    try {
-      const [usersRes, propertiesRes] = await Promise.all([
-        api.get('/admin/users'),
-        api.get('/admin/properties'),
-      ]);
-      setUsers(usersRes.data.data);
-      setProperties(propertiesRes.data.data);
-    } catch {
-      toast.error('Failed to load admin data');
-    } finally {
-      setLoading(false);
-    }
+    setUsers([...DEMO_USERS]);
+    setProperties([...PROPERTIES]);
+    setLoading(false);
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  const setPropertyStatus = async (id, status) => {
-    try {
-      await api.put(`/admin/properties/${id}/status`, { status });
-      setProperties((prev) => prev.map((p) => (p._id === id ? { ...p, status } : p)));
-      toast.success(`Property ${status}`);
-    } catch {
-      toast.error('Action failed');
-    }
+  const setPropertyStatus = (id, status) => {
+    setProperties((prev) => prev.map((p) => (p._id === id ? { ...p, status } : p)));
+    toast.success(`Property ${status}`);
   };
 
-  const removeProperty = async (id) => {
+  const removeProperty = (id) => {
     if (!window.confirm('Permanently remove this listing?')) return;
-    try {
-      await api.delete(`/admin/properties/${id}`);
-      setProperties((prev) => prev.filter((p) => p._id !== id));
-      toast.success('Listing removed');
-    } catch {
-      toast.error('Action failed');
-    }
+    setProperties((prev) => prev.filter((p) => p._id !== id));
+    toast.success('Listing removed');
   };
 
-  const toggleUserStatus = async (id, isActive) => {
-    try {
-      await api.put(`/admin/users/${id}/status`, { isActive: !isActive });
-      setUsers((prev) => prev.map((u) => (u._id === id ? { ...u, isActive: !isActive } : u)));
-      toast.success(!isActive ? 'User activated' : 'User deactivated');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Action failed');
-    }
+  const toggleUserStatus = (id, isActive) => {
+    setUsers((prev) => prev.map((u) => (u._id === id ? { ...u, isActive: !isActive } : u)));
+    toast.success(!isActive ? 'User activated' : 'User deactivated');
   };
 
-  const deleteUser = async (id) => {
+  const deleteUser = (id) => {
     if (!window.confirm('Delete this user permanently?')) return;
-    try {
-      await api.delete(`/admin/users/${id}`);
-      setUsers((prev) => prev.filter((u) => u._id !== id));
-      toast.success('User deleted');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Action failed');
-    }
+    setUsers((prev) => prev.filter((u) => u._id !== id));
+    toast.success('User deleted');
   };
 
   if (loading) return <LoadingSpinner fullScreen />;
@@ -83,13 +49,7 @@ const AdminDashboard = () => {
 
       <div className="flex gap-2 mb-6">
         {['properties', 'users'].map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium capitalize ${
-              tab === t ? 'bg-primary-600 text-white' : 'bg-surface-800 text-slate-300 border border-surface-700'
-            }`}
-          >
+          <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 rounded-lg text-sm font-medium capitalize ${tab === t ? 'bg-primary-600 text-white' : 'bg-surface-800 text-slate-300 border border-surface-700'}`}>
             {t}
           </button>
         ))}
@@ -117,18 +77,12 @@ const AdminDashboard = () => {
                   <td className="px-5 py-3">
                     <div className="flex items-center justify-end gap-3">
                       {p.status !== 'approved' && (
-                        <button onClick={() => setPropertyStatus(p._id, 'approved')} className="text-green-400" title="Approve">
-                          <FiCheck />
-                        </button>
+                        <button onClick={() => setPropertyStatus(p._id, 'approved')} className="text-green-400" title="Approve"><FiCheck /></button>
                       )}
                       {p.status !== 'rejected' && (
-                        <button onClick={() => setPropertyStatus(p._id, 'rejected')} className="text-yellow-400" title="Reject">
-                          <FiX />
-                        </button>
+                        <button onClick={() => setPropertyStatus(p._id, 'rejected')} className="text-yellow-400" title="Reject"><FiX /></button>
                       )}
-                      <button onClick={() => removeProperty(p._id)} className="text-red-400" title="Delete">
-                        <FiTrash2 />
-                      </button>
+                      <button onClick={() => removeProperty(p._id)} className="text-red-400" title="Delete"><FiTrash2 /></button>
                     </div>
                   </td>
                 </tr>
@@ -164,16 +118,10 @@ const AdminDashboard = () => {
                   <td className="px-5 py-3">
                     {u.role !== 'admin' && (
                       <div className="flex items-center justify-end gap-3">
-                        <button
-                          onClick={() => toggleUserStatus(u._id, u.isActive)}
-                          className="text-slate-400 hover:text-primary-400"
-                          title={u.isActive ? 'Deactivate' : 'Activate'}
-                        >
+                        <button onClick={() => toggleUserStatus(u._id, u.isActive)} className="text-slate-400 hover:text-primary-400" title={u.isActive ? 'Deactivate' : 'Activate'}>
                           {u.isActive ? <FiUserX /> : <FiUserCheck />}
                         </button>
-                        <button onClick={() => deleteUser(u._id)} className="text-red-400" title="Delete">
-                          <FiTrash2 />
-                        </button>
+                        <button onClick={() => deleteUser(u._id)} className="text-red-400" title="Delete"><FiTrash2 /></button>
                       </div>
                     )}
                   </td>

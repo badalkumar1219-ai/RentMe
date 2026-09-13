@@ -1,8 +1,7 @@
-// pages/Home.jsx
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FiArrowRight, FiMapPin, FiHome, FiUsers, FiStar } from 'react-icons/fi';
-import api from '../api/axios';
+import { getFeaturedProperties, getPopularLocations } from '../data/listings';
 import SearchBar from '../components/SearchBar';
 import PropertyCard from '../components/PropertyCard';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -20,28 +19,14 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [featuredRes, locationsRes] = await Promise.all([
-          api.get('/properties/featured'),
-          api.get('/properties/popular-locations'),
-        ]);
-        setFeatured(featuredRes.data.data);
-        setLocations(locationsRes.data.data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    setFeatured(getFeaturedProperties());
+    setLocations(getPopularLocations());
+    setLoading(false);
   }, []);
 
   return (
     <div>
-      {/* ---------- Hero Section ---------- */}
       <section className="relative overflow-hidden min-h-[700px] flex items-center bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1800&q=85')" }}>
-        {/* Layered treatment keeps the photo legible while adding depth. */}
         <div className="absolute inset-0 bg-gradient-to-br from-surface-900/95 via-surface-900/70 to-surface-900/35" />
         <div className="absolute inset-0 bg-gradient-to-t from-surface-900 via-transparent to-transparent" />
         <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-emerald-500/8 blur-3xl animate-pulse-soft" />
@@ -61,7 +46,6 @@ const Home = () => {
             <SearchBar />
           </div>
 
-          {/* Stats row */}
           <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 animate-slide-up delay-300">
             {STATS.map((stat) => (
               <div key={stat.label} className="flex flex-col items-center gap-1">
@@ -74,7 +58,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* ---------- Featured Properties ---------- */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -99,7 +82,6 @@ const Home = () => {
         )}
       </section>
 
-      {/* ---------- Popular Locations ---------- */}
       {locations.length > 0 && (
         <section className="bg-surface-800/50 py-16 border-y border-surface-700/30">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -122,7 +104,6 @@ const Home = () => {
         </section>
       )}
 
-      {/* ---------- Call To Action ---------- */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-primary-900/50 via-surface-900 to-accent-900/30" />
         <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">

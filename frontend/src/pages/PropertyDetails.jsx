@@ -1,10 +1,9 @@
-// pages/PropertyDetails.jsx
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FiMapPin, FiHeart, FiPhone, FiMail, FiCalendar } from 'react-icons/fi';
 import { FaBed, FaBath, FaRulerCombined, FaCouch } from 'react-icons/fa';
-import api from '../api/axios';
+import { getPropertyById } from '../data/listings';
 import { useAuth } from '../context/AuthContext';
 import ImageGallery from '../components/ImageGallery';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -20,18 +19,25 @@ const PropertyDetails = () => {
   const [showContact, setShowContact] = useState(false);
 
   useEffect(() => {
-    const load = async () => {
+    const load = () => {
       setLoading(true);
       try {
-        const { data } = await api.get(`/properties/${id}`);
-        setProperty(data.data);
+        const data = getPropertyById(id);
+        if (data) {
+          setProperty(data);
+        } else {
+          setError('Property not found');
+        }
 
         if (user) {
-          const favRes = await api.get('/favorites');
-          setIsFavorite(favRes.data.data.some((p) => p._id === id));
+          const stored = localStorage.getItem('favoriteIds');
+          if (stored) {
+            const favs = JSON.parse(stored);
+            setIsFavorite(favs.includes(id));
+          }
         }
       } catch (err) {
-        setError(err.response?.data?.message || 'Property not found');
+        setError('Property not found');
       } finally {
         setLoading(false);
       }
@@ -39,21 +45,27 @@ const PropertyDetails = () => {
     load();
   }, [id, user]);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!user) {
       toast.error('Please login to save this property');
       return;
     }
     try {
+      const stored = localStorage.getItem('favoriteIds');
+      let favs = stored ? JSON.parse(stored) : [];
+      
       if (isFavorite) {
-        await api.delete(`/favorites/${id}`);
+        favs = favs.filter(favId => favId !== id);
         setIsFavorite(false);
         toast.success('Removed from saved properties');
       } else {
-        await api.post(`/favorites/${id}`);
+        if (!favs.includes(id)) {
+          favs.push(id);
+        }
         setIsFavorite(true);
         toast.success('Property saved!');
       }
+      localStorage.setItem('favoriteIds', JSON.stringify(favs));
     } catch {
       toast.error('Something went wrong');
     }
@@ -79,7 +91,6 @@ const PropertyDetails = () => {
       <ImageGallery images={property.images} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mt-8">
-        {/* Main details */}
         <div className="lg:col-span-2">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -102,7 +113,6 @@ const PropertyDetails = () => {
             </button>
           </div>
 
-          {/* Quick stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
             <Stat icon={<FaBed />} label="Bedrooms" value={property.bedrooms} />
             <Stat icon={<FaBath />} label="Bathrooms" value={property.bathrooms} />
@@ -123,7 +133,6 @@ const PropertyDetails = () => {
             </span>
           </div>
 
-          {/* Map */}
           <div className="mt-8">
             <h2 className="text-lg font-semibold text-white mb-2">Location on Map</h2>
             <div className="rounded-xl overflow-hidden h-72 border border-surface-700/50">
@@ -139,7 +148,6 @@ const PropertyDetails = () => {
           </div>
         </div>
 
-        {/* Sidebar: price + contact */}
         <div>
           <div className="bg-surface-800/80 backdrop-blur-sm rounded-xl border border-surface-700/50 p-6 sticky top-20">
             <p className="text-3xl font-bold text-primary-400">

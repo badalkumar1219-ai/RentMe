@@ -1,7 +1,6 @@
-// pages/Listings.jsx
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import api from '../api/axios';
+import { filterProperties } from '../data/listings';
 import PropertyCard from '../components/PropertyCard';
 import FilterSidebar from '../components/FilterSidebar';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -23,7 +22,7 @@ const Listings = () => {
       furnishingStatus: searchParams.get('furnishingStatus') || '',
       sortBy: searchParams.get('sortBy') || 'newest',
     }),
-    [] // eslint-disable-line react-hooks/exhaustive-deps
+    []
   );
 
   const [filters, setFilters] = useState(initialFilters);
@@ -34,21 +33,19 @@ const Listings = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchProperties = useCallback(async () => {
+  const fetchProperties = useCallback(() => {
     setLoading(true);
     setError('');
     try {
-      const params = { ...filters, page };
-      Object.keys(params).forEach((k) => !params[k] && delete params[k]);
-      const { data } = await api.get('/properties', { params });
-      setProperties(data.data);
-      setTotalPages(data.totalPages || 1);
+      const results = filterProperties(filters);
+      setProperties(results);
+      setTotalPages(1);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load properties');
+      setError('Failed to load properties');
     } finally {
       setLoading(false);
     }
-  }, [filters, page]);
+  }, [filters]);
 
   useEffect(() => {
     const timer = setTimeout(fetchProperties, 350);
@@ -57,10 +54,14 @@ const Listings = () => {
 
   useEffect(() => {
     if (!user) return;
-    api
-      .get('/favorites')
-      .then(({ data }) => setFavoriteIds(new Set(data.data.map((p) => p._id))))
-      .catch(() => {});
+    try {
+      const stored = localStorage.getItem('favoriteIds');
+      if (stored) {
+        setFavoriteIds(new Set(JSON.parse(stored)));
+      }
+    } catch (e) {
+      console.error(e);
+    }
   }, [user]);
 
   const handleFiltersChange = (next) => {
@@ -88,22 +89,18 @@ const Listings = () => {
       return;
     }
     const isFav = favoriteIds.has(propertyId);
-    try {
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
       if (isFav) {
-        await api.delete(`/favorites/${propertyId}`);
-        setFavoriteIds((prev) => {
-          const next = new Set(prev);
-          next.delete(propertyId);
-          return next;
-        });
+        next.delete(propertyId);
+        toast.success('Removed from favorites');
       } else {
-        await api.post(`/favorites/${propertyId}`);
-        setFavoriteIds((prev) => new Set(prev).add(propertyId));
+        next.add(propertyId);
         toast.success('Saved to favorites');
       }
-    } catch (err) {
-      toast.error('Something went wrong, please try again');
-    }
+      localStorage.setItem('favoriteIds', JSON.stringify(Array.from(next)));
+      return next;
+    });
   };
 
   return (
